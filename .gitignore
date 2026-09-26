@@ -40,6 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# SQLite Database
+
+*.db
+*.db-journal
+
 # SQLite database files
 *.db
 *.db-journal
