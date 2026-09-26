@@ -44,3 +44,9 @@ next-env.d.ts
 
 *.db
 *.db-journal
+
+# SQLite database files
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
