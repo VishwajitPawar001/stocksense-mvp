@@ -9,9 +9,9 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const isOnAuthPage = nextUrl.pathname.startsWith("/auth");
-      
+
       if (isOnAuthPage) {
-        if (isLoggedIn) return Response.redirect(new URL("/products", nextUrl));
+        if (isLoggedIn) return Response.redirect(new URL("/", nextUrl));
         return true;
       }
       return isLoggedIn;

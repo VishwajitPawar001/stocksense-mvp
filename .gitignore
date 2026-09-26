@@ -50,3 +50,6 @@ next-env.d.ts
 *.db-journal
 *.db-shm
 *.db-wal
+
+TRACK_2_OPERATIONS_LEDGER.md
+TRACK_3_INVENTORY_SETTINGS.md
