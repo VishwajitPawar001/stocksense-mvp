@@ -82,6 +82,7 @@ export async function getDashboardMetrics(): Promise<{
     };
   } catch (error) {
     console.error("Failed to fetch dashboard metrics:", error);
-    return { error: "Failed to load dashboard metrics" };
+    return { success: false, error: "Failed to load dashboard metrics" };
   }
 }
+
