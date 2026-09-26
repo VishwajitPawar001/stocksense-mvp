@@ -1,39 +1,35 @@
-import Database from 'better-sqlite3';
-import path from 'path';
+import "server-only";
+import { Pool } from "pg";
 
-// Creates a local SQLite file named 'stocksense.db' in the root folder
-const dbPath = path.resolve(process.cwd(), 'stocksense.db');
-const db = new Database(dbPath);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
-export function initializeDB() {
-  db.exec(`
-    -- 1. Users Table (Enforces unique login_id and email)
+export async function initializeDB() {
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       login_id TEXT UNIQUE NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL
     );
 
-    -- 2. Warehouses Table (Settings context)
     CREATE TABLE IF NOT EXISTS warehouses (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       name TEXT NOT NULL,
       short_code TEXT NOT NULL,
       address TEXT
     );
 
-    -- 3. Locations Table (Supports moving stock between racks/warehouses)
     CREATE TABLE IF NOT EXISTS locations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       warehouse_id INTEGER,
       name TEXT NOT NULL,
       FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
     );
 
-    -- 4. Products Table (Master Data)
     CREATE TABLE IF NOT EXISTS products (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       name TEXT NOT NULL,
       sku TEXT UNIQUE NOT NULL,
       category TEXT NOT NULL,
@@ -42,9 +38,8 @@ export function initializeDB() {
       quantity_on_hand INTEGER DEFAULT 0
     );
 
-    -- 5. Operations Table (Receipts, Deliveries, Internal, Adjustments)
     CREATE TABLE IF NOT EXISTS operations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       reference TEXT UNIQUE NOT NULL,
       operation_type TEXT NOT NULL,
       status TEXT NOT NULL,
@@ -53,9 +48,8 @@ export function initializeDB() {
       responsible TEXT
     );
 
-    -- 6. Operation Lines (Products inside an Operation)
     CREATE TABLE IF NOT EXISTS operation_lines (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       operation_id INTEGER NOT NULL,
       product_id INTEGER NOT NULL,
       demand_qty INTEGER NOT NULL,
@@ -63,9 +57,8 @@ export function initializeDB() {
       FOREIGN KEY (product_id) REFERENCES products(id)
     );
 
-    -- 7. Move History (Immutable Stock Ledger tracking IN and OUT events)
     CREATE TABLE IF NOT EXISTS move_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       reference TEXT NOT NULL,
       product_id INTEGER NOT NULL,
       quantity INTEGER NOT NULL,
@@ -76,7 +69,7 @@ export function initializeDB() {
     );
   `);
 
-  console.log("SQLite Database initialized successfully.");
+  console.log("PostgreSQL database initialized successfully.");
 }
 
-export default db;
+export default pool;

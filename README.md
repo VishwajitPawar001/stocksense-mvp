@@ -1,36 +1,117 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StockSense MVP
 
-## Getting Started
+StockSense is an inventory management platform built with Next.js (App Router), React, TypeScript, TailwindCSS, and PostgreSQL.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## PostgreSQL Migration — Setup Requirements & Steps
+
+### Requirements
+- **Node.js**: v18.x or v20+ with npm
+- **PostgreSQL**: 16.x – 18.x
+- **Git**
+- **Code Editor**: VS Code or preferred IDE
+- **PostgreSQL Service**: Running on default port `5432`
+
+---
+
+### Setup Steps
+
+#### 1. Install PostgreSQL
+Install PostgreSQL locally including:
+- PostgreSQL Server
+- pgAdmin 4 (optional GUI)
+- Command Line Tools (`psql`, `pg_isready`)
+
+> **Note**: Remember the password configured for the default `postgres` superuser during installation.
+
+#### 2. Verify PostgreSQL Service
+Open PowerShell or your terminal and verify the CLI and server status:
+
+```powershell
+# Check CLI version
+psql --version
+
+# Verify server is active and accepting connections
+pg_isready
+```
+*Expected output:* `accepting connections`
+
+#### 3. Create the StockSense Database
+Connect to PostgreSQL using `psql`:
+
+```powershell
+psql -U postgres
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Inside the PostgreSQL prompt:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sql
+CREATE DATABASE stocksense;
+\c stocksense
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+#### 4. Database Tables Initialization
+StockSense utilizes automatic table initialization on application boot. When the application runs, it provisions the following 7 core tables:
+- `users`
+- `warehouses`
+- `locations`
+- `products`
+- `operations`
+- `operation_lines`
+- `move_history`
 
-## Learn More
+You can verify created tables at any time in `psql`:
+```sql
+\dt
+```
 
-To learn more about Next.js, take a look at the following resources:
+#### 5. Install Project Dependencies
+From the `stocksense-mvp` folder:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```powershell
+npm install
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+*Note: The project uses `pg` and `@types/pg`. Legacy SQLite dependencies have been removed.*
 
-## Deploy on Vercel
+#### 6. Configure Environment Variables
+Copy the template or create `.env.local`:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```powershell
+cp .env.example .env.local
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ensure `.env.local` contains:
+```env
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/stocksense
+```
+*Replace `YOUR_PASSWORD` with your local PostgreSQL `postgres` password.*
+
+> **Important**: Do not commit `.env.local` to Git. It is excluded in `.gitignore`.
+
+#### 7. Start the Application
+Run the Next.js development server:
+
+```powershell
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+The terminal will confirm database initialization:
+```text
+PostgreSQL database initialized successfully.
+```
+
+---
+
+### Verification Checklist
+- [ ] PostgreSQL installed & in system `PATH`
+- [ ] PostgreSQL service active (`pg_isready`)
+- [ ] `stocksense` database created
+- [ ] `.env.local` configured with valid database credentials
+- [ ] Dependencies installed (`npm install`)
+- [ ] `npm run dev` starts without errors
+- [ ] Application logs `"PostgreSQL database initialized successfully."`
+- [ ] `.env.local` excluded from Git staging
