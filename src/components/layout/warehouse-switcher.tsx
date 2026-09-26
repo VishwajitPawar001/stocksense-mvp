@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Building2, ChevronDown, Check, Plus, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Building2, ChevronDown, Check, Settings, Globe } from "lucide-react";
 import Link from "next/link";
 import { getWarehouses } from "@/actions/settings";
 
@@ -13,8 +14,9 @@ interface Warehouse {
 }
 
 export function WarehouseSwitcher() {
+  const router = useRouter();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse>({
+  const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>({
     id: 1,
     name: "Central Warehouse",
     short_code: "WH01",
@@ -27,16 +29,27 @@ export function WarehouseSwitcher() {
       const res = await getWarehouses();
       if (res.success && res.warehouses && res.warehouses.length > 0) {
         setWarehouses(res.warehouses);
-        // Check if there is a saved preference in localStorage
-        const savedId = localStorage.getItem("stocksense_active_warehouse_id");
-        if (savedId) {
-          const found = res.warehouses.find((w: Warehouse) => String(w.id) === savedId);
+
+        // Read cookie first
+        const match = document.cookie.match(/stocksense_active_warehouse_id=([^;]+)/);
+        const cookieVal = match ? match[1] : null;
+
+        if (cookieVal === "all") {
+          setSelectedWarehouse(null);
+          return;
+        }
+
+        if (cookieVal) {
+          const found = res.warehouses.find((w: Warehouse) => String(w.id) === cookieVal);
           if (found) {
             setSelectedWarehouse(found);
             return;
           }
         }
+
+        // Default to first warehouse
         setSelectedWarehouse(res.warehouses[0]);
+        document.cookie = `stocksense_active_warehouse_id=${res.warehouses[0].id}; path=/; max-age=31536000`;
       }
     }
     load();
@@ -53,12 +66,19 @@ export function WarehouseSwitcher() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  function handleSelect(wh: Warehouse) {
+  function handleSelect(wh: Warehouse | null) {
     setSelectedWarehouse(wh);
-    localStorage.setItem("stocksense_active_warehouse_id", String(wh.id));
-    localStorage.setItem("stocksense_active_warehouse_code", wh.short_code);
-    localStorage.setItem("stocksense_active_warehouse_name", wh.name);
+    if (wh) {
+      document.cookie = `stocksense_active_warehouse_id=${wh.id}; path=/; max-age=31536000`;
+      localStorage.setItem("stocksense_active_warehouse_id", String(wh.id));
+      localStorage.setItem("stocksense_active_warehouse_code", wh.short_code);
+      localStorage.setItem("stocksense_active_warehouse_name", wh.name);
+    } else {
+      document.cookie = `stocksense_active_warehouse_id=all; path=/; max-age=31536000`;
+      localStorage.setItem("stocksense_active_warehouse_id", "all");
+    }
     setIsOpen(false);
+    router.refresh();
   }
 
   return (
@@ -71,14 +91,18 @@ export function WarehouseSwitcher() {
       >
         <div className="flex items-center gap-2.5 min-w-0 text-left">
           <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/30">
-            <Building2 className="w-3.5 h-3.5" />
+            {selectedWarehouse ? (
+              <Building2 className="w-3.5 h-3.5" />
+            ) : (
+              <Globe className="w-3.5 h-3.5" />
+            )}
           </div>
           <div className="truncate">
             <p className="font-semibold text-white truncate text-[12px] group-hover:text-indigo-300 transition-colors">
-              {selectedWarehouse.name}
+              {selectedWarehouse ? selectedWarehouse.name : "All Warehouses"}
             </p>
             <p className="text-[10px] text-slate-400 font-mono">
-              {selectedWarehouse.short_code} • Active Depot
+              {selectedWarehouse ? `${selectedWarehouse.short_code} • Active Depot` : "Consolidated View"}
             </p>
           </div>
         </div>
@@ -96,38 +120,55 @@ export function WarehouseSwitcher() {
             Switch Facility
           </div>
 
-          <div className="max-h-48 overflow-y-auto py-1 space-y-0.5">
-            {warehouses.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-slate-400">Loading facilities...</div>
-            ) : (
-              warehouses.map((wh) => {
-                const isSelected = wh.id === selectedWarehouse.id;
-                return (
-                  <button
-                    key={wh.id}
-                    onClick={() => handleSelect(wh)}
-                    type="button"
-                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs transition cursor-pointer ${
-                      isSelected
-                        ? "bg-indigo-600 text-white font-medium shadow-xs"
-                        : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                    }`}
-                  >
-                    <div className="truncate">
-                      <p className="truncate font-medium">{wh.name}</p>
-                      <p
-                        className={`text-[10px] font-mono ${
-                          isSelected ? "text-indigo-200" : "text-slate-400"
-                        }`}
-                      >
-                        {wh.short_code} {wh.address ? `• ${wh.address}` : ""}
-                      </p>
-                    </div>
-                    {isSelected && <Check className="w-4 h-4 text-white shrink-0 ml-2" />}
-                  </button>
-                );
-              })
-            )}
+          <div className="max-h-56 overflow-y-auto py-1 space-y-0.5">
+            {/* Option: All Warehouses */}
+            <button
+              onClick={() => handleSelect(null)}
+              type="button"
+              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs transition cursor-pointer ${
+                selectedWarehouse === null
+                  ? "bg-indigo-600 text-white font-medium shadow-xs"
+                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Globe className="w-3.5 h-3.5 text-slate-400" />
+                <div>
+                  <p className="font-medium truncate">All Facilities (Global)</p>
+                  <p className="text-[10px] text-slate-400">Combined organization view</p>
+                </div>
+              </div>
+              {selectedWarehouse === null && <Check className="w-4 h-4 text-white shrink-0 ml-2" />}
+            </button>
+
+            {/* Individual Warehouses */}
+            {warehouses.map((wh) => {
+              const isSelected = selectedWarehouse?.id === wh.id;
+              return (
+                <button
+                  key={wh.id}
+                  onClick={() => handleSelect(wh)}
+                  type="button"
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs transition cursor-pointer ${
+                    isSelected
+                      ? "bg-indigo-600 text-white font-medium shadow-xs"
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  }`}
+                >
+                  <div className="truncate">
+                    <p className="truncate font-medium">{wh.name}</p>
+                    <p
+                      className={`text-[10px] font-mono ${
+                        isSelected ? "text-indigo-200" : "text-slate-400"
+                      }`}
+                    >
+                      {wh.short_code} {wh.address ? `• ${wh.address}` : ""}
+                    </p>
+                  </div>
+                  {isSelected && <Check className="w-4 h-4 text-white shrink-0 ml-2" />}
+                </button>
+              );
+            })}
           </div>
 
           <div className="pt-1 mt-1 border-t border-slate-800">

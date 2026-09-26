@@ -1,24 +1,41 @@
 "use server";
 
 import pool from "@/lib/db";
+import { getActiveWarehouseId } from "@/lib/warehouse-context";
 
-// Fetch the full immutable stock ledger
-export async function getMoveHistory() {
+// Fetch the immutable stock ledger scoped to the active facility
+export async function getMoveHistory(specificWarehouseId?: number) {
   try {
-    const result = await pool.query(`
-      SELECT 
-        mh.id,
-        mh.reference,
-        p.name as "productName",
-        p.sku,
-        mh.quantity,
-        mh.movement_type,
-        mh.date,
-        mh.responsible
-      FROM move_history mh
-      JOIN products p ON mh.product_id = p.id
-      ORDER BY mh.date DESC
-    `);
+    const whId = specificWarehouseId ?? (await getActiveWarehouseId());
+    const query = whId
+      ? `SELECT 
+          mh.id,
+          mh.reference,
+          p.name as "productName",
+          p.sku,
+          mh.quantity,
+          mh.movement_type,
+          mh.date,
+          mh.responsible
+        FROM move_history mh
+        JOIN products p ON mh.product_id = p.id
+        WHERE mh.warehouse_id = $1
+        ORDER BY mh.id DESC`
+      : `SELECT 
+          mh.id,
+          mh.reference,
+          p.name as "productName",
+          p.sku,
+          mh.quantity,
+          mh.movement_type,
+          mh.date,
+          mh.responsible
+        FROM move_history mh
+        JOIN products p ON mh.product_id = p.id
+        ORDER BY mh.id DESC`;
+
+    const params = whId ? [whId] : [];
+    const result = await pool.query(query, params);
     
     return { success: true, history: result.rows };
   } catch (error) {
@@ -28,20 +45,34 @@ export async function getMoveHistory() {
 }
 
 // Fetch recent activity for the Dashboard overview (limit to top 5)
-export async function getRecentActivity() {
+export async function getRecentActivity(specificWarehouseId?: number) {
   try {
-    const result = await pool.query(`
-      SELECT 
-        mh.reference,
-        p.name as "productName",
-        mh.movement_type,
-        mh.quantity,
-        mh.date
-      FROM move_history mh
-      JOIN products p ON mh.product_id = p.id
-      ORDER BY mh.date DESC
-      LIMIT 5
-    `);
+    const whId = specificWarehouseId ?? (await getActiveWarehouseId());
+    const query = whId
+      ? `SELECT 
+          mh.reference,
+          p.name as "productName",
+          mh.movement_type,
+          mh.quantity,
+          mh.date
+        FROM move_history mh
+        JOIN products p ON mh.product_id = p.id
+        WHERE mh.warehouse_id = $1
+        ORDER BY mh.id DESC
+        LIMIT 5`
+      : `SELECT 
+          mh.reference,
+          p.name as "productName",
+          mh.movement_type,
+          mh.quantity,
+          mh.date
+        FROM move_history mh
+        JOIN products p ON mh.product_id = p.id
+        ORDER BY mh.id DESC
+        LIMIT 5`;
+
+    const params = whId ? [whId] : [];
+    const result = await pool.query(query, params);
     
     return { success: true, recentActivity: result.rows };
   } catch (error) {
